@@ -43,7 +43,7 @@ namespace Build
             public static bool RemoveMultiComments = true;
             public const string RemoveMultiComments_Tag = "remove_multiline_comments";
 
-            public static bool RemoveNewlines = true;
+            public static bool RemoveNewlines = false;
             public const string RemoveNewlines_Tag = "remove_newlines";
 
             public static bool RemoveSingleComments = true;
