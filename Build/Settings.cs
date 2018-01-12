@@ -90,9 +90,9 @@ namespace Build
             {
                 "BaseProgram.cs"
             };
-            RemoveMultiComments = true;
+            RemoveMultiComments = false;
             RemoveNewlines = false;
-            RemoveSingleComments = true;
+            RemoveSingleComments = false;
             RemoveWhitespace = true;
         }
 
