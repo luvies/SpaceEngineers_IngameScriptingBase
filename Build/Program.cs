@@ -1,6 +1,6 @@
 ﻿using System;
 using System.IO;
-using System.Collections;
+using System.Linq;
 
 namespace Build
 {
@@ -22,7 +22,9 @@ namespace Build
 
             Processor.Process(settings);
 
+#if DEBUG
             Pause();
+#endif
         }
 
         private static void Pause()
