@@ -96,6 +96,7 @@ namespace Build
 
             bool inString = false; // whether we are in a string (preserve everything unless we exit)
             bool ampString = false; // whether the string started with an @ (means \" is the end of a string)
+            bool stringEscaped = false; // to stop \\" being registered as \"
             bool inSingleComment = false; // whether we are in a single comment (preserve if keep single comments, ignore multiline comments)
             bool inMultiComment = false; // whether we are in a multiline comment (preserve if keep multi comments, if contents match custom block then switch into/out of)
             bool multiCommentJust_In = false; // whether we just entered a multiline comment
@@ -105,6 +106,11 @@ namespace Build
             bool inWhiteSpace = false; // whether we are in whitespace (ignore other whitespace if not preserve)
             foreach (char ch in content) // loop through content
             {
+                // if in @"..." and previous and current char are '"', then stay in
+                // otherwise kick out
+                if (inString && ampString && stringEscaped && ch != '"')
+                    inString = false;
+
                 if (!inString) // if not in a string, then do normal processing
                 {
                     if (inMultiComment) // if in a multiline comment
@@ -123,6 +129,8 @@ namespace Build
                                             currentBlock = null; // unset the current block
                                             inCustomBlock = false; // we are no longer in a custom block
                                         }
+                                        else
+                                            customBlockBuffer.Append(FormatBackMultilineComment(buffer));
                                     }
                                     else // this was a standard multiline comment
                                     {
@@ -136,7 +144,7 @@ namespace Build
                                         if (currentBlock != null) // if the comment should open a custom block, do it
                                             inCustomBlock = true;
                                         if (!inCustomBlock && !settings.RemoveMultiComments) // if this wasn't a custom block opening, process normal multiline comment
-                                            builder.Append(string.Format("/*{0}*/", buffer.ToString()));
+                                            builder.Append(FormatBackMultilineComment(buffer));
                                     }
 
                                     buffer.Clear(); // clear multiline comment buffer
@@ -259,14 +267,13 @@ namespace Build
 
                 // if we are in a multiline comment or single line comment, then we aren't going to be entering a proper string
                 // also, if we are in a string but have just encountered a '\"', then ignore it as an ending
-                if (!inMultiComment && !inSingleComment && ch == '"')
+                if (!inMultiComment && !inSingleComment && ch == '"' && !stringEscaped)
                 {
                     if (inString) // if we're in a string, then we are not guaranteed to come out of it
                     {
-                        bool test = ampString ?
-                            prev == '"' : // @"..." strings allow '""' to escape quotes
-                            prev == '\\'; // normal strings use '\"' instead
-                        if (!test)
+                        if (ampString)
+                            stringEscaped = true;
+                        else
                             inString = false;
                     }
                     else
@@ -274,6 +281,13 @@ namespace Build
                         inString = true;
                         ampString = prev == '@';
                     }
+                }
+                if (inString && !ampString)
+                {
+                    if (ch == '\\' && !stringEscaped)
+                        stringEscaped = true;
+                    else
+                        stringEscaped = false;
                 }
 
                 prev = ch; // set the previous char
@@ -284,6 +298,6 @@ namespace Build
         }
 
         static bool IsWhitespace(char c) => char.IsWhiteSpace(c) && c != Newline; // whether the char is whitespace or not (but ignore newlines as whitespace due to separate handling)
-
+        static string FormatBackMultilineComment(StringBuilder buffer) => string.Format("/*{0}*/", buffer.ToString());
     }
 }
