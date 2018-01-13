@@ -19,7 +19,7 @@ namespace Build
             SpacesRemoving = true,
             CommentsRemoving = true,
             RegionsRemoving = true,
-            MiscCompressing = true,
+            MiscCompressing = false,
             NamespacesRemoving = true,
             PublicCompressing = false,
             ToStringMethodsRemoving = false,
