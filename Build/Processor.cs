@@ -35,7 +35,14 @@ namespace Build
             {
                 // split to allow nicer debugging
                 string blk = string.Format(_minifyFormatBlock, buf); // format into class block to enable proper output
-                blk = _minifier.MinifyFromString(blk); // minify block
+                try
+                {
+                    blk = _minifier.MinifyFromString(blk); // minify block
+                }
+                catch (Exception ex)
+                {
+                    throw new CustomBlockException("Minification failed", ex);
+                }
                 blk = _minifyExtract.Match(blk).Groups[1].Value; // extract from class block
                 return blk;
             })
@@ -57,7 +64,20 @@ namespace Build
             Console.WriteLine("Found {0} files, processing...", files.Count);
 
             foreach (string fname in files)
-                ProcessFile(fname, settings);
+            {
+                Console.WriteLine("Processing file '{0}'...", fname);
+                try
+                {
+                    ProcessFile(fname, settings);
+                    Console.WriteLine("-> File fully processed");
+                }
+                catch (CustomBlockException ex)
+                {
+                    Console.WriteLine("-> Unable to process file, reason: {0}", ex.Message);
+                    if (ex.InnerException != null)
+                        Console.WriteLine("->    > Inner message: {0}", ex.InnerException.Message);
+                }
+            }
         }
 
         /// <summary>
@@ -75,6 +95,7 @@ namespace Build
             StringBuilder builder = new StringBuilder(); // the current built file
 
             bool inString = false; // whether we are in a string (preserve everything unless we exit)
+            bool ampString = false; // whether the string started with an @ (means \" is the end of a string)
             bool inSingleComment = false; // whether we are in a single comment (preserve if keep single comments, ignore multiline comments)
             bool inMultiComment = false; // whether we are in a multiline comment (preserve if keep multi comments, if contents match custom block then switch into/out of)
             bool multiCommentJust_In = false; // whether we just entered a multiline comment
@@ -140,19 +161,29 @@ namespace Build
                     {
                         if (ch == Newline) // if we are at a newline char, exit the comment
                         {
-                            if (!settings.RemoveSingleComments) // if we should keep the comment, add it and the newline
+                            if (inCustomBlock)
+                                customBlockBuffer.Append(ch);
+                            else
                             {
-                                builder.Append(buffer.ToString());
-                                builder.Append(ch);
+                                if (!settings.RemoveSingleComments) // if we should keep the comment, add it and the newline
+                                {
+                                    builder.Append(buffer.ToString());
+                                    builder.Append(ch);
+                                }
+                                else if (!settings.RemoveNewlines) // otherwise if we are keeping newlines, add just that
+                                    builder.Append(ch);
+                                buffer.Clear(); // clear the single line buffer
+                                inWhiteSpace = true; // we are now in whitespace
                             }
-                            else if (!settings.RemoveNewlines) // otherwise if we are keeping newlines, add just that
-                                builder.Append(ch);
-                            buffer.Clear(); // clear the single line buffer
                             inSingleComment = false; // no longer in a single line comment
-                            inWhiteSpace = true; // we are now in whitespace
                         }
                         else // otherwise buffer the char
-                            buffer.Append(ch);
+                        {
+                            if (inCustomBlock)
+                                customBlockBuffer.Append(ch);
+                            else
+                                buffer.Append(ch);
+                        }
                     }
                     else // we are in normal code space
                     {
@@ -172,10 +203,10 @@ namespace Build
                                     }
                                     else // otherwise we are now in a single line comment, so add the '//' to the buffer
                                     {
-                                        inSingleComment = true;
                                         buffer.Append(prev);
                                         buffer.Append(ch);
                                     }
+                                    inSingleComment = true;
                                     break;
                                 default:
                                     if (inCustomBlock) // if in a custom block, add the chars to the block buffer
@@ -218,13 +249,32 @@ namespace Build
                         multiCommentJust_Out = false; // we have been out of a multiline comment for at least 1 char now
                     }
                 }
-                else
-                    builder.Append(ch); // append the char regarless if in a string
+                else // append the char regarless if in a string
+                {
+                    if (inCustomBlock)
+                        customBlockBuffer.Append(ch);
+                    else
+                        builder.Append(ch);
+                }
 
-                // if we are in a custom block, multiline comment, or single line comment, then we aren't going to be entering a proper string
-                // also, if we are in a string but have just encountered a '\"', then ignore it as an ending (doesn't support @"..." strings yet)
-                if (!inCustomBlock && !inMultiComment && !inSingleComment && (ch == '"' && (!inString || prev != '\\')))
-                    inString = !inString; // switch in a out of a string
+                // if we are in a multiline comment or single line comment, then we aren't going to be entering a proper string
+                // also, if we are in a string but have just encountered a '\"', then ignore it as an ending
+                if (!inMultiComment && !inSingleComment && ch == '"')
+                {
+                    if (inString) // if we're in a string, then we are not guaranteed to come out of it
+                    {
+                        bool test = ampString ?
+                            prev == '"' : // @"..." strings allow '""' to escape quotes
+                            prev == '\\'; // normal strings use '\"' instead
+                        if (!test)
+                            inString = false;
+                    }
+                    else
+                    {
+                        inString = true;
+                        ampString = prev == '@';
+                    }
+                }
 
                 prev = ch; // set the previous char
             }
