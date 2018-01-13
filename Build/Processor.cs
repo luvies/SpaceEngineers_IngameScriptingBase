@@ -26,7 +26,7 @@ namespace Build
             UselessMembersCompressing = true,
             EnumToIntConversion = true
         });
-        const string _minifyFormatBlock = "public class Program {{{0}}}"; // otherwise minifier removes everything (public keeps name in check)
+        const string _minifyFormatBlock = "public class Program {{{0}\n}}"; // otherwise minifier removes everything (public keeps name in check)
         static readonly Regex _minifyExtract = new Regex(@"^public class Program ?{(.*)}$", RegexOptions.IgnoreCase | RegexOptions.Singleline);
         static readonly CustomBlock[] customBlocks =
         {
