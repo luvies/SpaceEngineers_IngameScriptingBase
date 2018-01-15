@@ -24,7 +24,9 @@ namespace Build
             PublicCompressing = false,
             ToStringMethodsRemoving = false,
             UselessMembersCompressing = true,
-            EnumToIntConversion = true
+            EnumToIntConversion = true,
+            Unsafe = false,
+            ConsoleApp = false
         });
         const string _minifyFormatBlock = "public class Program {{{0}\n}}"; // otherwise minifier removes everything (public keeps name in check)
         static readonly Regex _minifyExtract = new Regex(@"^public class Program ?{(.*)}$", RegexOptions.IgnoreCase | RegexOptions.Singleline);
@@ -37,7 +39,7 @@ namespace Build
                 string blk = string.Format(_minifyFormatBlock, buf); // format into class block to enable proper output
                 try
                 {
-                    blk = _minifier.MinifyFromString(blk); // minify block
+                    blk = _minifier.MinifyFromString(blk).Replace("\r", ""); // minify block
                 }
                 catch (Exception ex)
                 {
@@ -87,6 +89,9 @@ namespace Build
         /// <param name="settings">The current settings configuration.</param>
         static void ProcessFile(string file, Settings settings)
         {
+            // apply settings
+            _minifier.Options.LineLength = settings.MinifyLineLength;
+
             string content = File.ReadAllText(Path.Combine(settings.FileInPath, file)).Replace("\r", "");
 
             char prev = '\0'; // the previous character

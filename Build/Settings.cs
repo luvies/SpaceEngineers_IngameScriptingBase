@@ -16,6 +16,7 @@ namespace Build
         const string SettingValueMessage = "{0}{1} set to {2}";
         const string TagSkipUnknownMessage = "Skipping unknown tag '{0}'";
         const string TagSkipBoolMessage = "Skipping tag '{0}' because value is not of type 'bool'";
+        const string TagSkipIntMessage = "Skipping tag '{0}' because value is not of type 'int'";
         const string TagSkipStrMessage = "Skipping tag '{0}' due to lack of value";
 
         /// <summary>
@@ -82,6 +83,9 @@ namespace Build
         public bool RemoveWhitespace { get; private set; }
         const string RemoveWhitespace_Tag = "remove_whitespace";
 
+        public int MinifyLineLength { get; private set; }
+        const string MinifyLineLength_Tag = "minify_line_length";
+
         public Settings()
         {
             FileInPath = Path.Combine("..", "..", "..", "Scripts");
@@ -94,6 +98,7 @@ namespace Build
             RemoveNewlines = false;
             RemoveSingleComments = false;
             RemoveWhitespace = true;
+            MinifyLineLength = 0;
         }
 
         public static Settings LoadSettings()
@@ -167,6 +172,14 @@ namespace Build
                                         Console.WriteLine(TagSkipBoolMessage, RemoveWhitespace_Tag);
                                 }
                                 break;
+                            case MinifyLineLength_Tag:
+                                {
+                                    if (int.TryParse(xel.Value, out int value))
+                                        settings.MinifyLineLength = value;
+                                    else
+                                        Console.WriteLine(TagSkipIntMessage, MinifyLineLength_Tag);
+                                }
+                                break;
                             default:
                                 Console.WriteLine(TagSkipUnknownMessage, xel.Name);
                                 break;
@@ -194,6 +207,7 @@ namespace Build
             Console.WriteLine(SettingValueMessage, tabstr, RemoveNewlines_Tag, settings.RemoveNewlines);
             Console.WriteLine(SettingValueMessage, tabstr, RemoveSingleComments_Tag, settings.RemoveSingleComments);
             Console.WriteLine(SettingValueMessage, tabstr, RemoveWhitespace_Tag, settings.RemoveWhitespace);
+            Console.WriteLine(SettingValueMessage, tabstr, MinifyLineLength_Tag, settings.MinifyLineLength);
 
             return settings;
         }
