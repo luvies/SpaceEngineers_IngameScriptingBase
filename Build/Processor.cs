@@ -114,7 +114,11 @@ namespace Build
                 // if in @"..." and previous and current char are '"', then stay in
                 // otherwise kick out
                 if (inString && ampString && stringEscaped && ch != '"')
+                {
                     inString = false;
+                    ampString = false;
+                    stringEscaped = false;
+                }
 
                 if (!inString) // if not in a string, then do normal processing
                 {
@@ -279,7 +283,11 @@ namespace Build
                         if (ampString)
                             stringEscaped = true;
                         else
+                        {
                             inString = false;
+                            ampString = false;
+                            stringEscaped = false;
+                        }
                     }
                     else
                     {
